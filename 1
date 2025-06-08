@@ -1,0 +1,101 @@
+// ==UserScript==
+// @name         IMEI/MSISDN Checker (Fixed v1.3)
+// @namespace    Violentmonkey
+// @version      1.3
+// @description  Проверка номеров и устройств по статусу и дате подключения
+// @match        https://inmobiles.imei.kg/PersonalImportation/Details/*
+// @grant        none
+// ==/UserScript==
+
+(function () {
+  'use strict';
+
+  const THRESHOLD = 5; // Порог
+  const NOW = new Date; // Тестовая дата
+
+  function parseDate(dateStr) {
+    if (!dateStr) return null;
+    const parts = dateStr.split(' ');
+    if (parts.length < 3) return null;
+    const [day, monthStr, year] = parts;
+    const monthMap = {
+      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+      Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+    };
+    return new Date(year, monthMap[monthStr], parseInt(day));
+  }
+
+  function daysBetween(date) {
+    return (NOW - date) / (1000 * 60 * 60 * 24);
+  }
+
+  function processTable(table, type) {
+    if (!table) return;
+
+    const rows = table.querySelectorAll('tbody tr');
+    const data = [];
+
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      if (cells.length < 8) return;
+
+      const imei = cells[0]?.innerText.trim();
+      const imsi = cells[1]?.innerText.trim();
+      const msisdn = cells[2]?.innerText.trim();
+      const device = cells[3]?.innerText.trim();
+      const lastAttach = parseDate(cells[6]?.innerText.trim());
+      const regStatus = cells[7]?.innerText.trim().toLowerCase();
+
+      data.push({ imei, imsi, msisdn, device, lastAttach, regStatus });
+    });
+
+    let result = 'Положительный';
+
+    if (type === 'imei') {
+      const filtered = data.filter(d =>
+        d.msisdn?.startsWith('996') &&
+        d.regStatus.includes('not registered') &&
+        d.lastAttach && daysBetween(d.lastAttach) <= 14
+      );
+      const uniqueMSISDN = [...new Set(filtered.map(d => d.msisdn))];
+      if (uniqueMSISDN.length >= THRESHOLD) {
+        result = 'Отрицательный';
+      }
+    }
+
+    if (type === 'msisdn') {
+      const filtered = data.filter(d =>
+        d.regStatus.includes('not registered') &&
+        d.lastAttach && daysBetween(d.lastAttach) <= 14
+      );
+      const uniqueIMEI = [...new Set(filtered.map(d => d.imei))];
+      if (uniqueIMEI.length >= THRESHOLD) {
+        result = 'Отрицательный';
+      }
+    }
+
+    const output = document.createElement('div');
+    output.style.border = '2px solid #ccc';
+    output.style.padding = '10px';
+    output.style.margin = '10px 0';
+    output.style.fontWeight = 'bold';
+    output.style.backgroundColor = result === 'Отрицательный' ? '#ffdddd' : '#ddffdd';
+    output.style.color = result === 'Отрицательный' ? 'red' : 'green';
+    output.innerHTML = `<div>Проверка (${type.toUpperCase()})</div>
+                        <div>Текущая дата: ${NOW.toLocaleDateString()}</div>
+                        <div>Результат: ${result}</div>`;
+
+    table.parentElement.insertBefore(output, table);
+  }
+
+  window.addEventListener('load', () => {
+    const interval = setInterval(() => {
+      const tables = document.querySelectorAll('table');
+      if (tables.length >= 2) {
+        clearInterval(interval);
+        processTable(tables[0], 'Номеров');    // Первый блок — проверка MSISDN
+        processTable(tables[1], 'Устройств');  // Второй блок — проверка IMEI
+      }
+    }, 1000);
+  });
+})();
