@@ -11,7 +11,7 @@
   'use strict';
 
   const THRESHOLD = 5;
-  const NOW = new Date('2025-06-09');
+  const NOW = new Date;
   const CUTOFF = new Date(NOW);
   CUTOFF.setDate(CUTOFF.getDate() - 14);
 
