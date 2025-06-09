@@ -1,0 +1,143 @@
+// ==UserScript==
+// @name         IMEI/MSISDN Checker (v2.0 detailed IMEI list)
+// @namespace    Violentmonkey
+// @version      2.0
+// @description  Проверка IMEI и MSISDN с пояснением и порогами — корректный подсчёт уникальных значений + отображение списка
+// @match        https://inmobiles.imei.kg/PersonalImportation/Details/*
+// @grant        none
+// ==/UserScript==
+
+(function () {
+  'use strict';
+
+  const THRESHOLD = 5;
+  const NOW = new Date('2025-06-09');
+  const CUTOFF = new Date(NOW);
+  CUTOFF.setDate(CUTOFF.getDate() - 14);
+
+  function parseDate(dateStr) {
+    if (!dateStr) return null;
+    const parts = dateStr.split(' ');
+    const [day, monthStr, year] = parts;
+    const monthMap = {
+      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+      Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+    };
+    return new Date(year, monthMap[monthStr], parseInt(day));
+  }
+
+  function processTable(table, type) {
+    if (!table) return;
+
+    const rows = table.querySelectorAll('tbody tr');
+    const data = [];
+
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      if (cells.length < 8) return;
+
+      const imei = cells[0]?.innerText.trim();
+      const imsi = cells[1]?.innerText.trim();
+      const msisdn = cells[2]?.innerText.trim();
+      const lastAttach = parseDate(cells[6]?.innerText.trim());
+      const regStatus = cells[7]?.innerHTML.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+
+      data.push({ imei, imsi, msisdn, lastAttach, regStatus });
+    });
+
+    let result = 'Положительный';
+    let explanation = '';
+    let actualCount = 0;
+    let details = [];
+
+    const isUnregistered = status => {
+      const cleanStatus = status.replace(/\s*\(.*?\)/g, '').toLowerCase();
+      return cleanStatus.includes('не зарегистрировано') || cleanStatus.includes('катталган эмес');
+    };
+
+    if (type === 'imei') {
+      const filtered = data.filter(d =>
+        d.msisdn.startsWith('996') &&
+        isUnregistered(d.regStatus) &&
+        d.lastAttach && d.lastAttach >= CUTOFF
+      );
+
+      const msisdnSet = new Set();
+      const seen = new Set();
+
+      filtered.forEach(d => {
+        if (!seen.has(d.msisdn)) {
+          seen.add(d.msisdn);
+          msisdnSet.add(d.msisdn);
+          details.push(d.msisdn);
+        }
+      });
+
+      actualCount = msisdnSet.size;
+
+      if (actualCount >= THRESHOLD) {
+        result = 'Отрицательный';
+      }
+
+      explanation = `Найдено ${actualCount} уникальных MSISDN, начинающихся с '996' и со статусом 'не зарегистрировано' или 'катталган эмес' за последние 14 дней (при пороге ${THRESHOLD}).`;
+    }
+
+    if (type === 'msisdn') {
+      const filtered = data.filter(d =>
+        d.msisdn.startsWith('996') &&
+        isUnregistered(d.regStatus) &&
+        d.lastAttach && d.lastAttach >= CUTOFF
+      );
+
+      const imeiSet = new Set();
+      filtered.forEach(d => {
+        if (!imeiSet.has(d.imei)) {
+          imeiSet.add(d.imei);
+          details.push(d.imei);
+        }
+      });
+
+      actualCount = imeiSet.size;
+
+      if (actualCount >= THRESHOLD) {
+        result = 'Отрицательный';
+      }
+
+      explanation = `Найдено ${actualCount} уникальных IMEI, подключённых к MSISDN с '996' и со статусом 'не зарегистрировано' или 'катталган эмес' за последние 14 дней (при пороге ${THRESHOLD}).`;
+    }
+
+    const output = document.createElement('div');
+    output.style.border = '2px solid #ccc';
+    output.style.padding = '10px';
+    output.style.margin = '10px 0';
+    output.style.fontWeight = 'bold';
+    output.style.backgroundColor = result === 'Отрицательный' ? '#ffdddd' : '#ddffdd';
+    output.style.color = result === 'Отрицательный' ? 'red' : 'green';
+    output.innerHTML = `
+      <div>Проверка (${type.toUpperCase()})</div>
+      <div>Текущая дата: ${NOW.toLocaleDateString()}</div>
+      <div>Пороговая дата: ${CUTOFF.toLocaleDateString()} (–14 дней)</div>
+      <div>${explanation}</div>
+      <div>Результат: ${result}</div>
+      <div style="margin-top:10px; font-weight:normal; color:#333">
+        <div>Уникальные значения (${type === 'imei' ? 'MSISDN' : 'IMEI'}):</div>
+        <ul style="margin: 5px 0 0 20px; padding: 0; font-size: 90%">
+          ${details.map(val => `<li>${val}</li>`).join('')}
+        </ul>
+      </div>
+    `;
+
+    table.parentElement.insertBefore(output, table);
+  }
+
+  window.addEventListener('load', () => {
+    const interval = setInterval(() => {
+      const tables = document.querySelectorAll('table');
+      if (tables.length >= 2) {
+        clearInterval(interval);
+        processTable(tables[0], 'imei');    // Первый блок
+        processTable(tables[1], 'msisdn');  // Второй блок
+      }
+    }, 1000);
+  });
+})();
