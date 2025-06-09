@@ -2,7 +2,7 @@
 // @name         IMEI/MSISDN Checker (v2.0 detailed IMEI list)
 // @namespace    Violentmonkey
 // @version      2.0
-// @description  Проверка IMEI и MSISDN с пояснением и порогами — корректный подсчёт уникальных значений + отображение списка
+// @description  Проверка IMEI и MSISDN 
 // @match        https://inmobiles.imei.kg/PersonalImportation/Details/*
 // @grant        none
 // ==/UserScript==
@@ -79,7 +79,7 @@
         result = 'Отрицательный';
       }
 
-      explanation = `Найдено ${actualCount} уникальных MSISDN, начинающихся с '996' и со статусом 'не зарегистрировано' или 'катталган эмес' за последние 14 дней (при пороге ${THRESHOLD}).`;
+      explanation = `Найдено ${actualCount} уникальных MSISDN,  за последние 14 дней (при пороге ${THRESHOLD}).`;
     }
 
     if (type === 'msisdn') {
@@ -103,7 +103,7 @@
         result = 'Отрицательный';
       }
 
-      explanation = `Найдено ${actualCount} уникальных IMEI, подключённых к MSISDN с '996' и со статусом 'не зарегистрировано' или 'катталган эмес' за последние 14 дней (при пороге ${THRESHOLD}).`;
+      explanation = `Найдено ${actualCount} уникальных IMEI,  за последние 14 дней (при пороге ${THRESHOLD}).`;
     }
 
     const output = document.createElement('div');
