@@ -1,0 +1,177 @@
+// ==UserScript==
+// @name         Проверка IMEI, ИНН и ID Number
+// @namespace    imei.kg-checker-enhanced
+// @version      2.4
+// @description  Проверка IMEI, ИНН и ID Number 
+// @match        https://inmobiles.imei.kg/PersonalImportation/Details/*
+// @grant        none
+// ==/UserScript==
+
+(function () {
+  'use strict';
+
+  function getField(labelText) {
+    const allDivs = Array.from(document.querySelectorAll('div.td'));
+    for (let i = 0; i < allDivs.length - 1; i++) {
+      if (allDivs[i].innerText.trim() === labelText) {
+        return {
+          value: allDivs[i + 1].innerText.trim()
+        };
+      }
+    }
+    return null;
+  }
+
+  function getDigits(text) {
+    return text.replace(/[^\d]/g, '');
+  }
+
+  function createBlock(text, color = 'black') {
+    const span = document.createElement('span');
+    span.style.color = color;
+    span.style.whiteSpace = 'nowrap';
+    span.style.fontWeight = 'bold';
+    span.textContent = text;
+    return span;
+  }
+
+  function checkINN() {
+    const input = document.querySelector('input.txtpersNum');
+    if (!input) return null;
+    const digits = getDigits(input.value);
+    const valid = digits.length === 14;
+    return createBlock(`ИНН: ${digits.length} цифр`, valid ? 'green' : 'red');
+  }
+
+  function checkIDNumber() {
+    const input = document.querySelector('input.txtidNum');
+    if (!input) return null;
+    const digits = getDigits(input.value);
+    const valid = digits.length === 7;
+    return createBlock(`ID: ${digits.length} цифр`, valid ? 'green' : 'red');
+  }
+
+  function extractTAC(imei) {
+    return imei.substring(0, 8);
+  }
+
+  function extractSerial(imei) {
+    return imei.substring(8, 14);
+  }
+
+  function checkIMEIDetails() {
+    const imei1Raw = getField('IMEI1')?.value || '';
+    const imei2Raw = getField('IMEI2')?.value || '';
+    const imei3Raw = getField('IMEI3')?.value || '';
+    const slotsRaw = getField('SIM Slots Number')?.value || '';
+
+    const simSlots = parseInt(getDigits(slotsRaw), 10);
+    const imei1 = getDigits(imei1Raw);
+    let imei2 = getDigits(imei2Raw);
+    let imei3 = getDigits(imei3Raw);
+
+    const result = [];
+
+    let usedImei2 = imei2;
+    let usingImei3AsImei2 = false;
+    if (simSlots === 2 && imei2.length === 0 && imei3.length > 0) {
+      usedImei2 = imei3;
+      usingImei3AsImei2 = true;
+    }
+
+    result.push(createBlock(`IMEI1: ${imei1.length} цифр`, imei1.length === 15 ? 'green' : 'red'));
+    if (simSlots === 2) {
+      if (usingImei3AsImei2) {
+        result.push(createBlock(`IMEI2 (IMEI3): ${usedImei2.length} цифр`, usedImei2.length === 15 ? 'green' : 'red'));
+      } else if (imei2.length > 0) {
+        result.push(createBlock(`IMEI2: ${imei2.length} цифр`, imei2.length === 15 ? 'green' : 'red'));
+      }
+      if (imei3.length > 0 && !usingImei3AsImei2) {
+        result.push(createBlock(`IMEI3: ${imei3.length} цифр`, imei3.length === 15 ? 'green' : 'red'));
+      }
+    } else if (simSlots === 3) {
+      result.push(createBlock(`IMEI2: ${imei2.length} цифр`, imei2.length === 15 ? 'green' : 'red'));
+      result.push(createBlock(`IMEI3: ${imei3.length} цифр`, imei3.length === 15 ? 'green' : 'red'));
+    }
+
+    if (imei1.length === 15 && usedImei2.length === 15) {
+      const tac1 = extractTAC(imei1), tac2 = extractTAC(usedImei2);
+      const serial1 = extractSerial(imei1), serial2 = extractSerial(usedImei2);
+      if (tac1 === tac2 && tac1.length === 8) {
+        result.push(createBlock(`TAC номер ✅ ${tac1}`, 'green'));
+      } else if (serial1 === serial2 && serial1.length === 6) {
+        result.push(createBlock(`Серийный номер ✅ ${serial1}`, 'green'));
+      } else {
+        result.push(createBlock(`TAC ❌ , Серийный номер ❌`, 'red'));
+      }
+    }
+
+    let simCheckPassed = false;
+
+    if (simSlots === 1) {
+      if (imei1.length === 15 && imei2.length === 0 && imei3.length === 0) {
+        simCheckPassed = true;
+      } else {
+        result.push(createBlock('IMEI2 лишний при 1 слоте', 'red'));
+      }
+    } else if (simSlots === 2) {
+      const validConfig = imei1.length === 15 && usedImei2.length > 0;
+      if (validConfig) {
+        simCheckPassed = true;
+      } else {
+        result.push(createBlock('IMEI2 отсутсвует при 2 слотах', 'red'));
+      }
+    } else if (simSlots === 3) {
+      if (imei1.length === 15 && imei2.length === 15 && imei3.length === 15) {
+        simCheckPassed = true;
+      } else {
+        result.push(createBlock('IMEI3 отсутсвует при 3 слотах', 'red'));
+      }
+    } else {
+      result.push(createBlock(`Ошибка: неизвестное количество SIM слотов (${simSlots})`, 'red'));
+    }
+
+    if (simCheckPassed) {
+      result.push(createBlock('SIM слоты: соответствуют', 'green'));
+    }
+
+    return result;
+  }
+
+  function setupOutputContainer() {
+    const allMenuItems = Array.from(document.querySelectorAll('.kt-menu__item'));
+    const targetMenuItem = allMenuItems.find(item =>
+      item.innerText.includes('Personal Importation Requests Additional Info')
+    );
+    if (!targetMenuItem) return null;
+
+    const outputDiv = document.createElement('div');
+    outputDiv.className = 'custom-check-output';
+    outputDiv.style.display = 'flex';
+    outputDiv.style.flexDirection = 'column';
+    outputDiv.style.gap = '6px';
+    outputDiv.style.fontSize = '14px';
+    outputDiv.style.padding = '10px';
+    outputDiv.style.marginTop = '10px';
+    outputDiv.style.background = '#f9f9f9';
+    outputDiv.style.border = '1px solid #ccc';
+    outputDiv.style.borderRadius = '6px';
+
+    targetMenuItem.parentNode.insertBefore(outputDiv, targetMenuItem.nextSibling);
+    return outputDiv;
+  }
+
+  window.addEventListener('load', () => {
+    const outputContainer = setupOutputContainer();
+    if (!outputContainer) return;
+    outputContainer.innerHTML = '';
+
+    const inn = checkINN();
+    const id = checkIDNumber();
+    const imeiChecks = checkIMEIDetails();
+
+    if (inn) outputContainer.appendChild(inn);
+    if (id) outputContainer.appendChild(id);
+    imeiChecks.forEach(block => outputContainer.appendChild(block));
+  });
+})();

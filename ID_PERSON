@@ -1,0 +1,43 @@
+// ==UserScript==
+// @name         ID и ИНН рядом
+// @namespace    Violentmonkey Script
+// @version      1.2
+// @description  ID и ИНН 
+// @match        *://*/*
+// @grant        none
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    function showIDandINN() {
+        const idInput = document.querySelector('input.txtidNum');
+        const innInput = document.querySelector('input.txtpersNum');
+
+        if (idInput && !idInput.dataset.modified) {
+            const idValue = idInput.value;
+            const idLabel = document.createElement('span');
+            idLabel.textContent = '← ' + idValue;
+            idLabel.style.fontSize = '22px';
+            idLabel.style.fontWeight = 'bold';
+            idLabel.style.color = '#000000';
+            idLabel.style.marginLeft = '10px';
+            idInput.parentNode.appendChild(idLabel);
+            idInput.dataset.modified = 'true'; // не дублировать
+        }
+
+        if (innInput && !innInput.dataset.modified) {
+            const innValue = innInput.value;
+            const innLabel = document.createElement('span');
+            innLabel.textContent = '← ' + innValue;
+            innLabel.style.fontSize = '22px';
+            innLabel.style.fontWeight = 'bold';
+            innLabel.style.color = '#000000';
+            innLabel.style.marginLeft = '10px';
+            innInput.parentNode.appendChild(innLabel);
+            innInput.dataset.modified = 'true'; // не дублировать
+        }
+    }
+
+    window.addEventListener('load', showIDandINN);
+})();
