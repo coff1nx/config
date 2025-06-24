@@ -45,7 +45,7 @@
       <b>Заявки:</b><br>
       ✅ Одобрено: <span id="approved-count">${approved}</span><br>
       ❌ Отклонено: <span id="rejected-count">${rejected}</span><br>
-      🧮 Всего: ${+approved + +rejected}<br><br>
+      📊 Всего: ${+approved + +rejected}<br><br>
       <button id="reset-counter" style="margin-top:5px;">Сброс</button>
     `;
   }
