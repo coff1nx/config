@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         ID и ИНН рядом
+// @name         ID, ИНН и Passport рядом (жирнее)
 // @namespace    Violentmonkey Script
-// @version      1.4
-// @description  Показывает ID и ИНН рядом с полями (обычный шрифт)
+// @version      1.6
+// @description  ID, ИНН 
 // @match        https://inmobiles.imei.kg/PersonalImportation/Details/*
 // @match        https://inmobiles.imei.kg/PersonalImportationRequestsAdditionalInfo/Details/*
 // @grant        none
@@ -17,24 +17,30 @@
         label.style.fontSize = '22px';
         label.style.color = '#000000';
         label.style.marginLeft = '10px';
+        label.style.fontWeight = '600';
         input.parentNode.appendChild(label);
         input.dataset.modified = 'true';
     }
 
-    function showIDandINN() {
+    function showFields() {
         const idInput = document.querySelector('input.txtidNum');
         const innInput = document.querySelector('input.txtpersNum');
+        const passInput = document.querySelector('input.txtpassNum');
 
-        if (idInput && !idInput.dataset.modified) {
-            addLabel(idInput, idInput.value);
+        if (idInput && !idInput.dataset.modified && idInput.value.trim()) {
+            addLabel(idInput, idInput.value.trim());
         }
 
-        if (innInput && !innInput.dataset.modified) {
-            addLabel(innInput, innInput.value);
+        if (innInput && !innInput.dataset.modified && innInput.value.trim()) {
+            addLabel(innInput, innInput.value.trim());
+        }
+
+        if (passInput && !passInput.dataset.modified && passInput.value.trim()) {
+            addLabel(passInput, passInput.value.trim());
         }
     }
 
     window.addEventListener('load', () => {
-        setTimeout(showIDandINN, 500);
+        setTimeout(showFields, 500);
     });
 })();
