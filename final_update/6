@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         NON TOURISTIC — Автооткрытие (интерактивно и точно + выбор строки + плавающее окно)
-// @namespace    http://bro.imei.kg/
-// @version      2.6
-// @description  Автооткрытие заявок из NON TOURISTIC — точное количество и выбор стартовой строки с плавающим окном
+// @name         NON TOURISTIC — Автооткрытие
+// @namespace    http://imei.kg/
+// @version      2.0
+// @description  NON TOURISTIC 
 // @match        https://inmobiles.imei.kg/PersonalImportation
 // @match        https://inmobiles.imei.kg/PersonalImportationRequestsAdditionalInfo
 // @grant        none
