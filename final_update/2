@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Проверка IMEI, ИНН и ID Number
 // @namespace    imei.kg-checker-enhanced
-// @version      2.4
+// @version      2.0
 // @description  Проверка IMEI, ИНН и ID Number
 // @match        https://inmobiles.imei.kg/PersonalImportation/Details/*
 // @match        https://inmobiles.imei.kg/PersonalImportationRequestsAdditionalInfo/Details/*
