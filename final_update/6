@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         NON TOURISTIC — Автооткрытие ( заявок )
+// @name         NON TOURISTIC — Автооткрытие (интерактивно и точно)
 // @namespace    http://bro.imei.kg/
-// @version      2.2
-// @description  Открывает до 20 заявок из NON TOURISTIC каждые 5 сек
+// @version      2.4
+// @description  Автооткрытие заявок из NON TOURISTIC — точно по количеству, а не индексу
 // @match        https://inmobiles.imei.kg/PersonalImportation
 // @match        https://inmobiles.imei.kg/PersonalImportationRequestsAdditionalInfo
 // @grant        none
@@ -11,13 +11,14 @@
 (function () {
     'use strict';
 
-    let currentIndex = 3;
-    const maxToOpen = 15;
-    const interval = 5; // 5 секунд
+    let currentIndex = 5;
+    let maxToOpen = 10;
+    let openedCount = 0;
+    const interval = 1; // секунд
     let rows = [];
     let running = false;
 
-    // Панель управления
+    // Панель
     const panel = document.createElement('div');
     panel.style = `
         position: fixed; top: 20px; left: 20px; z-index: 9999;
@@ -27,13 +28,18 @@
     panel.innerHTML = `
         <button id="startBtn" style="background:#28a745;color:#fff;padding:6px 14px;border:none;border-radius:5px;margin-right:5px;">▶ Старт</button>
         <button id="stopBtn" style="background:#dc3545;color:#fff;padding:6px 14px;border:none;border-radius:5px;">⏹ Стоп</button>
-        <div style="margin-top:8px;">Открыто: <span id="openedCount">0</span> из ${maxToOpen}</div>
+        <div style="margin-top:8px;">
+            Открыто: <span id="openedCount">0</span> из <span id="maxToOpenVal">${maxToOpen}</span><br>
+            🔢 Кол-во: <input id="maxToOpenInput" type="number" min="1" max="50" value="${maxToOpen}" style="width: 60px; margin-top: 5px;">
+        </div>
     `;
     document.body.appendChild(panel);
 
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
     const countSpan = document.getElementById('openedCount');
+    const inputField = document.getElementById('maxToOpenInput');
+    const maxToOpenVal = document.getElementById('maxToOpenVal');
 
     function findNonTouristicRows() {
         const header = [...document.querySelectorAll('h3.kt-portlet__head-title')]
@@ -44,18 +50,19 @@
     }
 
     async function openNext() {
-        if (!running || currentIndex >= maxToOpen || currentIndex >= rows.length) {
+        if (!running || openedCount >= maxToOpen || currentIndex >= rows.length) {
             running = false;
-            alert("✅ Открыто 20 заявок. Скрипт остановлен.");
+            alert(`✅ Открыто ${openedCount} заявок. Скрипт остановлен.`);
             return;
         }
 
         const row = rows[currentIndex];
         const dots = row.querySelector('a.btn-clean');
 
+        currentIndex++;
+
         if (!dots) {
-            currentIndex++;
-            setTimeout(openNext, interval);
+            setTimeout(openNext, interval * 1000);
             return;
         }
 
@@ -67,7 +74,6 @@
                 const viewLink = [...menu.querySelectorAll('a')].find(a => a.textContent.includes('View Details'));
 
                 if (viewLink) {
-                    // Имитация клика
                     const event = new MouseEvent('click', {
                         bubbles: true,
                         cancelable: true,
@@ -75,26 +81,36 @@
                     });
                     viewLink.dispatchEvent(event);
 
-                    currentIndex++;
-                    countSpan.textContent = currentIndex;
+                    openedCount++;
+                    countSpan.textContent = openedCount;
                 }
             }
 
             document.body.click();
 
             if (running) {
-                setTimeout(openNext, interval);
+                setTimeout(openNext, interval * 1000);
             }
         }, 300);
     }
 
     startBtn.addEventListener('click', () => {
         if (running) return;
+
+        const inputVal = parseInt(inputField.value, 10);
+        if (!isNaN(inputVal) && inputVal > 0) {
+            maxToOpen = inputVal;
+            maxToOpenVal.textContent = maxToOpen;
+        }
+
         rows = findNonTouristicRows();
         if (!rows || rows.length === 0) {
             alert("❌ NON TOURISTIC заявки не найдены!");
             return;
         }
+
+        openedCount = 0;
+        countSpan.textContent = '0';
         running = true;
         openNext();
     });
