@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         NON TOURISTIC — Автооткрытие (интерактивно и точно + выбор строки)
+// @name         NON TOURISTIC — Автооткрытие (интерактивно и точно + выбор строки + плавающее окно)
 // @namespace    http://bro.imei.kg/
-// @version      2.5
-// @description  Автооткрытие заявок из NON TOURISTIC — точное количество и выбор стартовой строки
+// @version      2.6
+// @description  Автооткрытие заявок из NON TOURISTIC — точное количество и выбор стартовой строки с плавающим окном
 // @match        https://inmobiles.imei.kg/PersonalImportation
 // @match        https://inmobiles.imei.kg/PersonalImportationRequestsAdditionalInfo
 // @grant        none
@@ -14,18 +14,25 @@
     let currentIndex = 5;
     let maxToOpen = 10;
     let openedCount = 0;
-    const interval = 5; // секунд
+    const interval = 5;
     let rows = [];
     let running = false;
 
+    // Восстановление позиции
+    const savedPos = JSON.parse(localStorage.getItem('nt_panel_position') || '{}');
+    const defaultTop = savedPos.top ?? 20;
+    const defaultLeft = savedPos.left ?? 20;
+
     // Панель
     const panel = document.createElement('div');
+    panel.id = 'nt-panel';
     panel.style = `
-        position: fixed; top: 20px; left: 20px; z-index: 9999;
+        position: fixed; top: ${defaultTop}px; left: ${defaultLeft}px; z-index: 9999;
         background: white; padding: 10px; border-radius: 8px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.2); border: 1px solid #ccc;
         font-family: Arial, sans-serif;
         font-size: 14px;
+        cursor: move;
     `;
     panel.innerHTML = `
         <div style="margin-bottom: 8px;">
@@ -47,6 +54,31 @@
     const countSpan = document.getElementById('openedCount');
     const inputCount = document.getElementById('maxToOpenInput');
     const inputStart = document.getElementById('startIndexInput');
+
+    // Перетаскивание с сохранением позиции
+    let isDragging = false;
+    let offsetX, offsetY;
+
+    panel.addEventListener('mousedown', e => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+        isDragging = true;
+        offsetX = e.clientX - panel.getBoundingClientRect().left;
+        offsetY = e.clientY - panel.getBoundingClientRect().top;
+    });
+
+    document.addEventListener('mousemove', e => {
+        if (isDragging) {
+            const left = e.clientX - offsetX;
+            const top = e.clientY - offsetY;
+            panel.style.left = `${left}px`;
+            panel.style.top = `${top}px`;
+            localStorage.setItem('nt_panel_position', JSON.stringify({ left, top }));
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+    });
 
     function findNonTouristicRows() {
         const header = [...document.querySelectorAll('h3.kt-portlet__head-title')]
