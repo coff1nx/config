@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         IMEI/MSISDN Checker (v2.0 detailed IMEI list)
+// @name         IMEI/MSISDN Checker (v2.0 )
 // @namespace    Violentmonkey
 // @version      2.0
-// @description  Проверка IMEI и MSISDN
+// @description  IMEI и MSISDN
 // @match        https://inmobiles.imei.kg/PersonalImportation/Details/*
 // @match        https://inmobiles.imei.kg/PersonalImportationRequestsAdditionalInfo/Details/*
 // @grant        none
