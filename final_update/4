@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Шаблоны для заявлений IMEI.KG - (обновлено)
+// @name         Шаблоны для заявлений IMEI.KG 
 // @namespace    http://tampermonkey.net/
-// @version      1.5
-// @description  Компактное меню шаблонов рядом с textarea для быстрого копирования и вставки одним кликом без номеров и с шириной 420px
+// @version      2.0
+// @description  Компактное меню шаблонов
 // @author       coff1n
 // @match        https://inmobiles.imei.kg/PersonalImportation/Details/*
 // @match        https://inmobiles.imei.kg/PersonalImportationRequestsAdditionalInfo/Details/*
