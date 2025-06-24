@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         NON TOURISTIC — Автооткрытие (интерактивно и точно)
+// @name         NON TOURISTIC — Автооткрытие (интерактивно и точно + выбор строки)
 // @namespace    http://bro.imei.kg/
-// @version      2.4
-// @description  Автооткрытие заявок из NON TOURISTIC — точно по количеству, а не индексу
+// @version      2.5
+// @description  Автооткрытие заявок из NON TOURISTIC — точное количество и выбор стартовой строки
 // @match        https://inmobiles.imei.kg/PersonalImportation
 // @match        https://inmobiles.imei.kg/PersonalImportationRequestsAdditionalInfo
 // @grant        none
@@ -14,7 +14,7 @@
     let currentIndex = 5;
     let maxToOpen = 10;
     let openedCount = 0;
-    const interval = 1; // секунд
+    const interval = 5; // секунд
     let rows = [];
     let running = false;
 
@@ -24,22 +24,29 @@
         position: fixed; top: 20px; left: 20px; z-index: 9999;
         background: white; padding: 10px; border-radius: 8px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.2); border: 1px solid #ccc;
+        font-family: Arial, sans-serif;
+        font-size: 14px;
     `;
     panel.innerHTML = `
-        <button id="startBtn" style="background:#28a745;color:#fff;padding:6px 14px;border:none;border-radius:5px;margin-right:5px;">▶ Старт</button>
-        <button id="stopBtn" style="background:#dc3545;color:#fff;padding:6px 14px;border:none;border-radius:5px;">⏹ Стоп</button>
-        <div style="margin-top:8px;">
-            Открыто: <span id="openedCount">0</span> из <span id="maxToOpenVal">${maxToOpen}</span><br>
-            🔢 Кол-во: <input id="maxToOpenInput" type="number" min="1" max="50" value="${maxToOpen}" style="width: 60px; margin-top: 5px;">
+        <div style="margin-bottom: 8px;">
+            🔢 Начать с строки: <input id="startIndexInput" type="number" min="0" value="${currentIndex}" style="width: 50px;">
         </div>
+        <div style="margin-bottom: 8px;">
+            📦 Кол-во заявок: <input id="maxToOpenInput" type="number" min="1" max="50" value="${maxToOpen}" style="width: 50px;">
+        </div>
+        <div style="margin-bottom: 10px;">
+            <button id="startBtn" style="background:#28a745;color:#fff;padding:6px 12px;border:none;border-radius:5px;margin-right:5px;">▶ Старт</button>
+            <button id="stopBtn" style="background:#dc3545;color:#fff;padding:6px 12px;border:none;border-radius:5px;">⏹ Стоп</button>
+        </div>
+        <div>📈 Открыто: <span id="openedCount">0</span></div>
     `;
     document.body.appendChild(panel);
 
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
     const countSpan = document.getElementById('openedCount');
-    const inputField = document.getElementById('maxToOpenInput');
-    const maxToOpenVal = document.getElementById('maxToOpenVal');
+    const inputCount = document.getElementById('maxToOpenInput');
+    const inputStart = document.getElementById('startIndexInput');
 
     function findNonTouristicRows() {
         const header = [...document.querySelectorAll('h3.kt-portlet__head-title')]
@@ -97,10 +104,15 @@
     startBtn.addEventListener('click', () => {
         if (running) return;
 
-        const inputVal = parseInt(inputField.value, 10);
-        if (!isNaN(inputVal) && inputVal > 0) {
-            maxToOpen = inputVal;
-            maxToOpenVal.textContent = maxToOpen;
+        const countVal = parseInt(inputCount.value, 10);
+        const startVal = parseInt(inputStart.value, 10);
+
+        if (!isNaN(countVal) && countVal > 0) {
+            maxToOpen = countVal;
+        }
+
+        if (!isNaN(startVal) && startVal >= 0) {
+            currentIndex = startVal;
         }
 
         rows = findNonTouristicRows();
