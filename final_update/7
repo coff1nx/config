@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         IMEI Заявки - Плавающий счётчик подтверждённых
+// @name         IMEI Заявки 
 // @match        https://inmobiles.imei.kg/PersonalImportation*
 // @match        https://inmobiles.imei.kg/PersonalImportation/Details/*
 // @match        https://inmobiles.imei.kg/PersonalImportationRequestsAdditionalInfo/Details/*
