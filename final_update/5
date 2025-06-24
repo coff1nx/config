@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Плавающая кнопка Вниз/Вверх
 // @namespace    http://tampermonkey.net/
-// @version      2.1
+// @version      2.0
 // @description  Кнопка "⬇ Вниз".
-// @author       Бро
+// @author       coff1n
 // @match        https://inmobiles.imei.kg/PersonalImportation*
 // @grant        none
 // ==/UserScript==
