@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         ID, ИНН и Passport рядом (жирнее)
+// @name         ID, ИНН и Passport 
 // @namespace    Violentmonkey Script
-// @version      1.6
+// @version      2.0
 // @description  ID, ИНН 
 // @match        https://inmobiles.imei.kg/PersonalImportation/Details/*
 // @match        https://inmobiles.imei.kg/PersonalImportationRequestsAdditionalInfo/Details/*
