@@ -1,0 +1,99 @@
+// ==UserScript==
+// @name         IMEI Заявки - Счётчик подтверждённых
+// @match        https://inmobiles.imei.kg/PersonalImportation*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+  'use strict';
+
+  const isMainPage = location.pathname === '/PersonalImportation';
+
+  // Разрешённые страницы для учёта approve/reject
+  const allowedUrls = [
+    '/PersonalImportation/Details/',
+    '/PersonalImportationRequestsAdditionalInfo/Details/'
+  ];
+
+  function isAllowedUrl() {
+    return allowedUrls.some(path => window.location.pathname.startsWith(path));
+  }
+
+  function createCounterBox() {
+    const box = document.createElement('div');
+    box.id = 'decision-counter';
+    box.style.position = 'fixed';
+    box.style.top = '100px';
+    box.style.right = '20px';
+    box.style.background = '#fff';
+    box.style.border = '2px solid #444';
+    box.style.padding = '10px 15px';
+    box.style.zIndex = '9999';
+    box.style.fontSize = '14px';
+    box.style.borderRadius = '10px';
+    box.style.boxShadow = '0 0 10px rgba(0,0,0,0.2)';
+    box.style.color = '#000';
+    box.style.fontFamily = 'Arial, sans-serif';
+    box.innerHTML = getCounterHTML();
+    document.body.appendChild(box);
+  }
+
+  function getCounterHTML() {
+    const approved = localStorage.getItem('approvedCount') || 0;
+    const rejected = localStorage.getItem('rejectedCount') || 0;
+    return `
+      <b>Заявки:</b><br>
+      ✅ Одобрено: <span id="approved-count">${approved}</span><br>
+      ❌ Отклонено: <span id="rejected-count">${rejected}</span><br>
+      🧮 Всего: ${+approved + +rejected}<br><br>
+      <button id="reset-counter" style="margin-top:5px;">Сброс</button>
+    `;
+  }
+
+  function updateCounterUI() {
+    const approvedEl = document.getElementById('approved-count');
+    const rejectedEl = document.getElementById('rejected-count');
+    if (approvedEl) approvedEl.textContent = localStorage.getItem('approvedCount') || 0;
+    if (rejectedEl) rejectedEl.textContent = localStorage.getItem('rejectedCount') || 0;
+  }
+
+  function incrementCounter(type) {
+    const current = parseInt(localStorage.getItem(type) || '0', 10);
+    localStorage.setItem(type, current + 1);
+    updateCounterUI();
+  }
+
+  function setupConfirmListener() {
+    document.addEventListener('click', function(e) {
+      if (!isAllowedUrl()) return; // Добавляем проверку URL
+
+      const target = e.target;
+      const text = target.textContent.trim().toLowerCase();
+
+      if (text === 'confirm' || text === 'approve') {
+        const parentModal = target.closest('.modal, .bootbox, .swal2-popup');
+        if (parentModal) {
+          const modalText = parentModal.innerText.toLowerCase();
+          if (modalText.includes('reject')) {
+            incrementCounter('rejectedCount');
+          } else if (modalText.includes('approve')) {
+            incrementCounter('approvedCount');
+          }
+        }
+      }
+
+      if (target.id === 'reset-counter') {
+        localStorage.setItem('approvedCount', 0);
+        localStorage.setItem('rejectedCount', 0);
+        updateCounterUI();
+      }
+    });
+  }
+
+  if (isMainPage) {
+    createCounterBox();
+  }
+
+  setupConfirmListener();
+
+})();

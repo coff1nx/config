@@ -1,0 +1,105 @@
+// ==UserScript==
+// @name         NON TOURISTIC — Автооткрытие ( заявок )
+// @namespace    http://bro.imei.kg/
+// @version      2.2
+// @description  Открывает до 20 заявок из NON TOURISTIC каждые 5 сек
+// @match        https://inmobiles.imei.kg/PersonalImportation
+// @match        https://inmobiles.imei.kg/PersonalImportationRequestsAdditionalInfo
+// @grant        none
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    let currentIndex = 3;
+    const maxToOpen = 15;
+    const interval = 5; // 5 секунд
+    let rows = [];
+    let running = false;
+
+    // Панель управления
+    const panel = document.createElement('div');
+    panel.style = `
+        position: fixed; top: 20px; left: 20px; z-index: 9999;
+        background: white; padding: 10px; border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2); border: 1px solid #ccc;
+    `;
+    panel.innerHTML = `
+        <button id="startBtn" style="background:#28a745;color:#fff;padding:6px 14px;border:none;border-radius:5px;margin-right:5px;">▶ Старт</button>
+        <button id="stopBtn" style="background:#dc3545;color:#fff;padding:6px 14px;border:none;border-radius:5px;">⏹ Стоп</button>
+        <div style="margin-top:8px;">Открыто: <span id="openedCount">0</span> из ${maxToOpen}</div>
+    `;
+    document.body.appendChild(panel);
+
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const countSpan = document.getElementById('openedCount');
+
+    function findNonTouristicRows() {
+        const header = [...document.querySelectorAll('h3.kt-portlet__head-title')]
+            .find(h3 => h3.textContent.includes('NON TOURISTIC'));
+        if (!header) return null;
+        const container = header.closest('div.kt-portlet.kt-portlet--mobile');
+        return container ? [...container.querySelectorAll('tbody tr')] : null;
+    }
+
+    async function openNext() {
+        if (!running || currentIndex >= maxToOpen || currentIndex >= rows.length) {
+            running = false;
+            alert("✅ Открыто 20 заявок. Скрипт остановлен.");
+            return;
+        }
+
+        const row = rows[currentIndex];
+        const dots = row.querySelector('a.btn-clean');
+
+        if (!dots) {
+            currentIndex++;
+            setTimeout(openNext, interval);
+            return;
+        }
+
+        dots.click();
+
+        setTimeout(() => {
+            const menu = document.querySelector('.dropdown-menu.show');
+            if (menu) {
+                const viewLink = [...menu.querySelectorAll('a')].find(a => a.textContent.includes('View Details'));
+
+                if (viewLink) {
+                    // Имитация клика
+                    const event = new MouseEvent('click', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    });
+                    viewLink.dispatchEvent(event);
+
+                    currentIndex++;
+                    countSpan.textContent = currentIndex;
+                }
+            }
+
+            document.body.click();
+
+            if (running) {
+                setTimeout(openNext, interval);
+            }
+        }, 300);
+    }
+
+    startBtn.addEventListener('click', () => {
+        if (running) return;
+        rows = findNonTouristicRows();
+        if (!rows || rows.length === 0) {
+            alert("❌ NON TOURISTIC заявки не найдены!");
+            return;
+        }
+        running = true;
+        openNext();
+    });
+
+    stopBtn.addEventListener('click', () => {
+        running = false;
+    });
+})();

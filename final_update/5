@@ -1,0 +1,152 @@
+// ==UserScript==
+// @name         Плавающая кнопка Вниз/Вверх
+// @namespace    http://tampermonkey.net/
+// @version      2.1
+// @description  Кнопка "⬇ Вниз".
+// @author       Бро
+// @match        https://inmobiles.imei.kg/PersonalImportation*
+// @grant        none
+// ==/UserScript==
+
+(function () {
+    'use strict';
+
+    const isDetailsPage = window.location.href.includes('/Details');
+
+    function scrollToBottom() {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+
+    function scrollToTop() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function addDraggableButton() {
+        if (document.getElementById('floating-scroll-btn')) return;
+
+        const btn = document.createElement('button');
+        btn.id = 'floating-scroll-btn';
+        btn.textContent = '⬇ Вниз';
+
+        const savedPosition = JSON.parse(localStorage.getItem('scrollBtnPosition') || '{}');
+        const defaultTop = savedPosition.top || 100;
+        const defaultLeft = savedPosition.left || window.innerWidth - 140;
+
+        Object.assign(btn.style, {
+            position: 'fixed',
+            top: `${defaultTop}px`,
+            left: `${defaultLeft}px`,
+            zIndex: 10000,
+            background: '#008cff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '6px 14px',
+            cursor: 'move',
+            fontSize: '14px',
+        });
+
+        btn.addEventListener('click', scrollToBottom);
+
+        // Перетаскивание
+        let isDragging = false;
+        let offsetX, offsetY;
+
+        btn.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            offsetX = e.clientX - btn.getBoundingClientRect().left;
+            offsetY = e.clientY - btn.getBoundingClientRect().top;
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const left = e.clientX - offsetX;
+                const top = e.clientY - offsetY;
+                btn.style.left = `${left}px`;
+                btn.style.top = `${top}px`;
+
+                // сохраняем позицию
+                localStorage.setItem('scrollBtnPosition', JSON.stringify({ left, top }));
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        document.body.appendChild(btn);
+    }
+
+    function addDownloadSideButton() {
+        const observer = new MutationObserver(() => {
+            const allDownloadBtns = Array.from(document.querySelectorAll('button, a'))
+                .filter(el => el.textContent.trim().toLowerCase() === 'download');
+
+            if (allDownloadBtns.length > 0 && !document.querySelector('#scroll-to-approve')) {
+                let rightmostBtn = allDownloadBtns[0];
+                let maxLeft = rightmostBtn.getBoundingClientRect().left;
+
+                for (const btn of allDownloadBtns) {
+                    const rect = btn.getBoundingClientRect();
+                    if (rect.left > maxLeft) {
+                        maxLeft = rect.left;
+                        rightmostBtn = btn;
+                    }
+                }
+
+                const scrollBtn = document.createElement('button');
+                scrollBtn.id = 'scroll-to-approve';
+                scrollBtn.textContent = '⬇ Вниз';
+                scrollBtn.style.marginLeft = '10px';
+                scrollBtn.style.padding = '4px 10px';
+                scrollBtn.style.background = '#008cff';
+                scrollBtn.style.color = 'white';
+                scrollBtn.style.border = 'none';
+                scrollBtn.style.borderRadius = '4px';
+                scrollBtn.style.cursor = 'pointer';
+                scrollBtn.style.fontSize = '13px';
+                scrollBtn.addEventListener('click', scrollToBottom);
+
+                if (rightmostBtn?.parentElement) {
+                    rightmostBtn.parentElement.insertBefore(scrollBtn, rightmostBtn.nextSibling);
+                }
+            }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    function addFixedUpButton() {
+        if (document.getElementById('fixed-up-btn')) return;
+
+        const upBtn = document.createElement('button');
+        upBtn.id = 'fixed-up-btn';
+        upBtn.textContent = '⬆ Наверх';
+
+        Object.assign(upBtn.style, {
+            position: 'fixed',
+            right: '20px',
+            bottom: '20px',
+            zIndex: 10000,
+            background: '#28a745',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '6px 14px',
+            fontSize: '14px',
+            cursor: 'pointer',
+        });
+
+        upBtn.addEventListener('click', scrollToTop);
+        document.body.appendChild(upBtn);
+    }
+
+    // Запуск
+    if (isDetailsPage) {
+        addDownloadSideButton(); // кнопка вниз как раньше
+        addFixedUpButton();      // новая кнопка вверх внизу
+    } else {
+        addDraggableButton();    // на главной — плавающая кнопка вниз с сохранением
+    }
+})();

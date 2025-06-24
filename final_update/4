@@ -1,0 +1,171 @@
+// ==UserScript==
+// @name         Шаблоны для заявлений IMEI.KG - (обновлено)
+// @namespace    http://tampermonkey.net/
+// @version      1.5
+// @description  Компактное меню шаблонов рядом с textarea для быстрого копирования и вставки одним кликом без номеров и с шириной 420px
+// @author       coff1n
+// @match        https://inmobiles.imei.kg/PersonalImportation/Details/*
+// @match        https://inmobiles.imei.kg/PersonalImportationRequestsAdditionalInfo/Details/*
+// @grant        GM_setClipboard
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    const templates = [
+        "Пожалуйста, загрузите отчетливую фотографию вашего удостоверения личности в поле изображения удостоверения личности в режиме реального времени.",
+        "Пожалуйста, загрузите отчетливую фотографию вашего паспорта в поле изображения паспорта  в режиме реального времени.",
+        "Модель устройства, указанная в вашем заявлении, имеет два IMEI-кода. Пожалуйста, предоставьте второй IMEI-код вашего устройства и отправьте заявление на IMEI.KG снова.",
+        "Модель устройства, указанная в вашем заявлении, имеет только два IMEI-кода. Пожалуйста, удалите третий IMEI-код и снова отправьте заявление на IMEI.KG.",
+        "При выборе “Приобретение устройство онлайн” в заявлении на регистрацию на IMEI.KG и выборе “Другие страны\", пожалуйста, загрузите официальную счет-фактуру по данному устройству, которое вы пытаетесь зарегистрировать, номер которой содержится (в грузовой таможенной декларации) в поле \"Номер таможенной декларации\". Этот документ обычно можно получить у стороны, которая доставила вам устройство, или вы можете связаться с таможенным агентством и запросить его непосредственно у них.",
+        "Один из IMEI-кодов указан не полностью. Пожалуйста, укажите оба IMEI-кода полностью и подайте заявление повторно.",
+        "Заявление отклонено по инициативе заявителя.",
+        "На предоставленном вами изображении не отображаются все коды IMEI устройства. Пожалуйста, предоставьте четкое изображение экрана вашего телефона с кодами IMEI. Наберите *#06# на своем телефоне и убедитесь, что экран телефона четко виден."
+    ];
+
+    // Добавляем стили для меню
+    const style = document.createElement('style');
+    style.textContent = `
+        #template-menu {
+            position: absolute;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            max-height: 300px;
+            overflow-y: auto;
+            width: 420px; /* ширина увеличена */
+            font-size: 13px;
+            z-index: 100000;
+        }
+        #template-menu .template {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        #template-menu .template:last-child {
+            border-bottom: none;
+        }
+        #template-menu .template:hover {
+            background: #f0f8ff;
+        }
+        #template-menu .template span {
+            flex: 1;
+            margin-right: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #template-menu .copy-btn {
+            background: #008cff;
+            border: none;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        #template-toggle-btn {
+            margin-left: 5px;
+            padding: 4px 10px;
+            font-size: 13px;
+            border: none;
+            background: #008cff;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    `;
+    document.head.appendChild(style);
+
+    let currentTextarea = null;
+    let menuVisible = false;
+    let menu, toggleBtn;
+
+    // Функция создания меню
+    function createMenu(textarea) {
+        if (menu) {
+            menu.remove();
+            menuVisible = false;
+        }
+
+        menu = document.createElement('div');
+        menu.id = 'template-menu';
+
+        templates.forEach(t => {
+            const div = document.createElement('div');
+            div.className = 'template';
+
+            const span = document.createElement('span');
+            span.textContent = t;
+            span.title = t;
+
+            const btn = document.createElement('button');
+            btn.className = 'copy-btn';
+            btn.textContent = 'Копировать и вставить';
+            btn.title = 'Нажми, чтобы скопировать в буфер и вставить в поле';
+
+            btn.addEventListener('click', () => {
+                GM_setClipboard(t);
+                textarea.value = t;
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+
+            div.appendChild(span);
+            div.appendChild(btn);
+            menu.appendChild(div);
+        });
+
+        const rect = toggleBtn.getBoundingClientRect();
+        menu.style.top = (rect.bottom + window.scrollY + 5) + 'px';
+        menu.style.left = (rect.left + window.scrollX) + 'px';
+
+        document.body.appendChild(menu);
+        menuVisible = true;
+
+        function outsideClickListener(e) {
+            if (!menu.contains(e.target) && e.target !== toggleBtn) {
+                menu.remove();
+                menuVisible = false;
+                document.removeEventListener('click', outsideClickListener);
+            }
+        }
+        document.addEventListener('click', outsideClickListener);
+    }
+
+    const observer = new MutationObserver(() => {
+        const textarea = document.querySelector('textarea[placeholder*="specify reason"]');
+        if (!textarea) return;
+
+        if (currentTextarea !== textarea) {
+            currentTextarea = textarea;
+
+            if (toggleBtn) toggleBtn.remove();
+            if (menu) { menu.remove(); menuVisible = false; }
+
+            toggleBtn = document.createElement('button');
+            toggleBtn.id = 'template-toggle-btn';
+            toggleBtn.textContent = 'Шаблоны';
+            toggleBtn.title = 'Открыть меню шаблонов';
+            toggleBtn.style.marginLeft = '5px';
+
+            toggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (menuVisible) {
+                    menu.remove();
+                    menuVisible = false;
+                } else {
+                    createMenu(textarea);
+                }
+            });
+
+            textarea.parentElement.appendChild(toggleBtn);
+        }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
+})();
