@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         Проверка IMEI, ИНН и ID Number
 // @namespace    imei.kg-checker-enhanced
-// @version      2.4
-// @description  Проверка IMEI, ИНН и ID Number 
+// @version      2.5
+// @description  Проверка IMEI, ИНН и ID Number с улучшенной логикой по IMEI и слотам
 // @match        https://inmobiles.imei.kg/PersonalImportation/Details/*
+// @match        https://inmobiles.imei.kg/PersonalImportationRequestsAdditionalInfo/Details/*
 // @grant        none
 // ==/UserScript==
 
@@ -79,21 +80,26 @@
       usingImei3AsImei2 = true;
     }
 
-    result.push(createBlock(`IMEI1: ${imei1.length} цифр`, imei1.length === 15 ? 'green' : 'red'));
+    // Функция для цвета длины
+    const colorByLength = (len) => (len === 15 ? 'green' : 'red');
+
+    // Показываем длины IMEI с цветом по длине
+    result.push(createBlock(`IMEI1: ${imei1.length} цифр`, colorByLength(imei1.length)));
     if (simSlots === 2) {
       if (usingImei3AsImei2) {
-        result.push(createBlock(`IMEI2 (IMEI3): ${usedImei2.length} цифр`, usedImei2.length === 15 ? 'green' : 'red'));
+        result.push(createBlock(`IMEI2 (IMEI3): ${usedImei2.length} цифр`, colorByLength(usedImei2.length)));
       } else if (imei2.length > 0) {
-        result.push(createBlock(`IMEI2: ${imei2.length} цифр`, imei2.length === 15 ? 'green' : 'red'));
+        result.push(createBlock(`IMEI2: ${imei2.length} цифр`, colorByLength(imei2.length)));
       }
       if (imei3.length > 0 && !usingImei3AsImei2) {
-        result.push(createBlock(`IMEI3: ${imei3.length} цифр`, imei3.length === 15 ? 'green' : 'red'));
+        result.push(createBlock(`IMEI3: ${imei3.length} цифр`, colorByLength(imei3.length)));
       }
     } else if (simSlots === 3) {
-      result.push(createBlock(`IMEI2: ${imei2.length} цифр`, imei2.length === 15 ? 'green' : 'red'));
-      result.push(createBlock(`IMEI3: ${imei3.length} цифр`, imei3.length === 15 ? 'green' : 'red'));
+      result.push(createBlock(`IMEI2: ${imei2.length} цифр`, colorByLength(imei2.length)));
+      result.push(createBlock(`IMEI3: ${imei3.length} цифр`, colorByLength(imei3.length)));
     }
 
+    // TAC/Serial проверка как было
     if (imei1.length === 15 && usedImei2.length === 15) {
       const tac1 = extractTAC(imei1), tac2 = extractTAC(usedImei2);
       const serial1 = extractSerial(imei1), serial2 = extractSerial(usedImei2);
@@ -108,24 +114,25 @@
 
     let simCheckPassed = false;
 
+    // Проверяем слоты и ошибки только если реально не совпадает
+
     if (simSlots === 1) {
-      if (imei1.length === 15 && imei2.length === 0 && imei3.length === 0) {
+      if (imei2.length === 0 && imei3.length === 0) {
         simCheckPassed = true;
       } else {
-        result.push(createBlock('IMEI2 лишний при 1 слоте', 'red'));
+        result.push(createBlock('IMEI2 или IMEI3 лишние при 1 слоте', 'red'));
       }
     } else if (simSlots === 2) {
-      const validConfig = imei1.length === 15 && usedImei2.length > 0;
-      if (validConfig) {
+      if (usedImei2.length > 0) {
         simCheckPassed = true;
       } else {
-        result.push(createBlock('IMEI2 отсутсвует при 2 слотах', 'red'));
+        result.push(createBlock('IMEI2 отсутствует при 2 слотах', 'red'));
       }
     } else if (simSlots === 3) {
       if (imei1.length === 15 && imei2.length === 15 && imei3.length === 15) {
         simCheckPassed = true;
       } else {
-        result.push(createBlock('IMEI3 отсутсвует при 3 слотах', 'red'));
+        result.push(createBlock('IMEI3 отсутствует при 3 слотах', 'red'));
       }
     } else {
       result.push(createBlock(`Ошибка: неизвестное количество SIM слотов (${simSlots})`, 'red'));
