@@ -159,11 +159,21 @@
         const parentModal = target.closest('.modal, .bootbox, .swal2-popup');
         if (parentModal) {
           const modalText = parentModal.innerText.toLowerCase();
-          if (modalText.includes('reject')) {
-            incrementCounter('rejectedCount');
-          } else if (modalText.includes('approve')) {
-            incrementCounter('approvedCount');
-          }
+
+          // Создаём наблюдатель за изменениями в DOM, чтобы ждать "Процесс завершен!"
+          const observer = new MutationObserver(() => {
+            const done = document.body.innerText.includes('Процесс завершен!');
+            if (done) {
+              if (modalText.includes('reject')) {
+                incrementCounter('rejectedCount');
+              } else if (modalText.includes('approve')) {
+                incrementCounter('approvedCount');
+              }
+              observer.disconnect();
+            }
+          });
+
+          observer.observe(document.body, { childList: true, subtree: true });
         }
       }
     });
