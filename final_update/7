@@ -1,30 +1,56 @@
 // ==UserScript==
-// @name         IMEI Заявки - Счётчик подтверждённых
+// @name         IMEI Заявки - Плавающий счётчик подтверждённых
 // @match        https://inmobiles.imei.kg/PersonalImportation*
+// @match        https://inmobiles.imei.kg/PersonalImportation/Details/*
+// @match        https://inmobiles.imei.kg/PersonalImportationRequestsAdditionalInfo/Details/*
 // @grant        none
 // ==/UserScript==
 
-(function() {
+(function () {
   'use strict';
 
   const isMainPage = location.pathname === '/PersonalImportation';
-
-  // Разрешённые страницы для учёта approve/reject
   const allowedUrls = [
     '/PersonalImportation/Details/',
     '/PersonalImportationRequestsAdditionalInfo/Details/'
   ];
 
+  const localKey = 'decisionCounterPosition';
+
   function isAllowedUrl() {
     return allowedUrls.some(path => window.location.pathname.startsWith(path));
   }
 
+  function getCount(type) {
+    return parseInt(localStorage.getItem(type) || '0', 10);
+  }
+
+  function setCount(type, val) {
+    localStorage.setItem(type, val.toString());
+  }
+
+  function savePosition(left, top) {
+    localStorage.setItem(localKey, JSON.stringify({ left, top }));
+  }
+
+  function loadPosition() {
+    const pos = localStorage.getItem(localKey);
+    if (pos) {
+      try {
+        return JSON.parse(pos);
+      } catch (e) {}
+    }
+    return { top: 100, left: window.innerWidth - 250 };
+  }
+
   function createCounterBox() {
+    const { top, left } = loadPosition();
+
     const box = document.createElement('div');
     box.id = 'decision-counter';
     box.style.position = 'fixed';
-    box.style.top = '100px';
-    box.style.right = '20px';
+    box.style.top = `${top}px`;
+    box.style.left = `${left}px`;
     box.style.background = '#fff';
     box.style.border = '2px solid #444';
     box.style.padding = '10px 15px';
@@ -34,38 +60,97 @@
     box.style.boxShadow = '0 0 10px rgba(0,0,0,0.2)';
     box.style.color = '#000';
     box.style.fontFamily = 'Arial, sans-serif';
+    box.style.cursor = 'move';
+    box.style.userSelect = 'none';
     box.innerHTML = getCounterHTML();
     document.body.appendChild(box);
+
+    makeDraggable(box);
+    setupButtonEvents(box);
   }
 
   function getCounterHTML() {
-    const approved = localStorage.getItem('approvedCount') || 0;
-    const rejected = localStorage.getItem('rejectedCount') || 0;
+    const approved = getCount('approvedCount');
+    const rejected = getCount('rejectedCount');
     return `
       <b>Заявки:</b><br>
-      ✅ Одобрено: <span id="approved-count">${approved}</span><br>
-      ❌ Отклонено: <span id="rejected-count">${rejected}</span><br>
-      📊 Всего: ${+approved + +rejected}<br><br>
-      <button id="reset-counter" style="margin-top:5px;">Сброс</button>
+      <div style="display:flex; align-items:center; margin-bottom:4px;">
+        ✅ Одобрено:
+        <span id="approved-count" style="margin-left:6px; font-weight: normal; min-width:30px; text-align:right;">${approved}</span>
+        <button id="approved-decrease" style="margin-left: 20px; background:#dc3545;color:#fff;border:none;width:22px;height:22px;border-radius:4px;">−</button>
+      </div>
+      <div style="display:flex; align-items:center; margin-bottom:4px;">
+        ❌ Отклонено:
+        <span id="rejected-count" style="margin-left:6px; font-weight: normal; min-width:30px; text-align:right;">${rejected}</span>
+        <button id="rejected-decrease" style="margin-left: 20px; background:#dc3545;color:#fff;border:none;width:22px;height:22px;border-radius:4px;">−</button>
+      </div>
+      📊 Всего: ${approved + rejected}<br><br>
+      <button id="reset-counter" style="margin-top:5px;padding:6px 12px;">Сброс</button>
     `;
   }
 
   function updateCounterUI() {
-    const approvedEl = document.getElementById('approved-count');
-    const rejectedEl = document.getElementById('rejected-count');
-    if (approvedEl) approvedEl.textContent = localStorage.getItem('approvedCount') || 0;
-    if (rejectedEl) rejectedEl.textContent = localStorage.getItem('rejectedCount') || 0;
+    const box = document.getElementById('decision-counter');
+    if (!box) return;
+    box.innerHTML = getCounterHTML();
+    setupButtonEvents(box);
+  }
+
+  function setupButtonEvents(box) {
+    box.querySelector('#approved-decrease').addEventListener('click', () => {
+      let val = getCount('approvedCount');
+      if (val > 0) setCount('approvedCount', val - 1);
+      updateCounterUI();
+    });
+
+    box.querySelector('#rejected-decrease').addEventListener('click', () => {
+      let val = getCount('rejectedCount');
+      if (val > 0) setCount('rejectedCount', val - 1);
+      updateCounterUI();
+    });
+
+    box.querySelector('#reset-counter').addEventListener('click', () => {
+      setCount('approvedCount', 0);
+      setCount('rejectedCount', 0);
+      updateCounterUI();
+    });
+  }
+
+  function makeDraggable(elem) {
+    let isDragging = false;
+    let offsetX, offsetY;
+
+    elem.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      offsetX = e.clientX - elem.getBoundingClientRect().left;
+      offsetY = e.clientY - elem.getBoundingClientRect().top;
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const left = e.clientX - offsetX;
+        const top = e.clientY - offsetY;
+        elem.style.left = `${left}px`;
+        elem.style.top = `${top}px`;
+        savePosition(left, top);
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
   }
 
   function incrementCounter(type) {
-    const current = parseInt(localStorage.getItem(type) || '0', 10);
-    localStorage.setItem(type, current + 1);
+    const current = getCount(type);
+    setCount(type, current + 1);
     updateCounterUI();
   }
 
   function setupConfirmListener() {
-    document.addEventListener('click', function(e) {
-      if (!isAllowedUrl()) return; // Добавляем проверку URL
+    document.addEventListener('click', function (e) {
+      if (!isAllowedUrl()) return;
 
       const target = e.target;
       const text = target.textContent.trim().toLowerCase();
@@ -81,12 +166,6 @@
           }
         }
       }
-
-      if (target.id === 'reset-counter') {
-        localStorage.setItem('approvedCount', 0);
-        localStorage.setItem('rejectedCount', 0);
-        updateCounterUI();
-      }
     });
   }
 
@@ -95,5 +174,4 @@
   }
 
   setupConfirmListener();
-
 })();
